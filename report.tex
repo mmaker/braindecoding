@@ -1,17 +1,82 @@
 
 \documentclass[10pt]{article}
 \title{\textbf{Machine Learning Project Report }}
-\author{Michele Orru`}
-\date{25 November 2012}
+\author{Michele Orr\`u}
 \usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{mathtools}
 \begin{document}
 \maketitle
 
-\section{Abstract}
-\section{Problem}
-\section{Dataset}
-\section{Implementation}
+\begin{abstract}
+The purpose of this project is to implement a two-step analysis and classification of magnetoencephalography (MEG) data. 
+\end{abstract}
 
-\section{conclusion}
+
+
+\section{Introduction}
+Given a user shifting his attention to the left or to the right and monitoring the spatial and temporal status of the MEG signal, the classificator should be able to \textit{a-posteriori} brain-decode towards which direction the user was actually shifting his attention.
+
+
+
+\section{Dataset}
+The phenomenom can be described as a tuple $(trial, direction)$, where:
+$$
+trial  = 
+ \begin{bmatrix}
+   freq_{0, 0} & freq_{0, 1} & \cdots & freq_{0, t}  \\
+   freq_{1, 0} & freq_{1, 1} & \cdots & freq_{1, t}  \\
+   \vdots      & \vdots      & \ddots & \vdots       \\
+   frew_{n, 0} & freq_{n, 1} & \cdots & freq_{n, t} 
+ \end{bmatrix}
+\hspace{30pt}
+ direction = \left\{
+ \begin{array}{l l}
+   -1 & \text{if left}\\
+   +1 & \text{if right}\\
+ \end{array}\right .
+$$
+$freq$ is the MEG frequency, sonded for $t$ uniform intervals of time on each of the $n = 127$ channels.
+Totally, we have $< 200$ monitored phenomenons.
+
+\vspace{10in}
+\textbf{TODO}:
+\begin{enumerate}
+\item come \`e fatto $freq$?
+\item quanti sono gli istanti di tempo $t$?
+\item quanti sono i fenomeni monitorati, esattamente?
+\item describe how to parse data and how to organize for testing
+\end{enumerate}
+
+
+
+
+\section{Problem}
+Basically the task consists in producing a binary classifier ($-1$ left, $+1$ right), though its implementation has been approached chaining two different classifiers by pipeline:
+\begin{enumerate}
+\item the first classifier filters the data for a specific channel and attemps to give a specific classification (left, right); 
+\item the second one uses as input the various classifications on all channels for a specific trial, and expresses the result still in a binary classification left/right.
+\end{enumerate}
+
+
+
+\section{Implementation}
+The implementation is done in pure python, using \href{http://scikit-learn.org/stable/}{scikit-learn} module. 
+
+\vspace{10in}
+\textbf{TODO}:
+\begin{enumerate}
+\item  \href{https://en.wikibooks.org/wiki/LaTeX/Algorithms_and_Pseudocode}{pseudocodice per pseudoscienziati}
+\item introduction to the source code structure
+\item documentation
+\end{enumerate}
+
+s
+
+\section{Conclusions}
+\textbf{TODO}
+
+
 
 \end{document}
+
