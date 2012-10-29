@@ -1,4 +1,3 @@
-
 \documentclass[10pt]{article}
 \title{\textbf{Machine Learning Project Report }}
 \author{Michele Orr\`u}
@@ -15,12 +14,12 @@ The purpose of this project is to implement a two-step analysis and classificati
 
 
 \section{Introduction}
-Given a user shifting his attention to the left or to the right and monitoring the spatial and temporal status of the MEG signal, the classificator should be able to \textit{a-posteriori} brain-decode towards which direction the user was actually shifting his attention.
+Given a user shifting his attention to the left or to the right and monitoring the spatial and temporal status of the MEG signal, the goal is to build a classifier capable of brain-decode \textit{a-posteriori} towards which direction the user was actually shifting his attention.
 
 
 
 \section{Dataset}
-The phenomenom can be described as a tuple $(trial, direction)$, where:
+The phenomenom can be described as a set $\{(trial, direction)_i\}_{i= 1, 2, \dots, trials}$, where:
 $$
 trial  = 
  \begin{bmatrix}
@@ -37,13 +36,16 @@ trial  =
  \end{array}\right .
 $$
 $freq$ is the MEG frequency, sonded for $t$ uniform intervals of time on each of the $n = 127$ channels.
-Totally, we have $< 200$ monitored phenomenons.
+Totally, we have $< 200$ monitored trials.
 
-\vspace{10in}
-\textbf{TODO}:
+\subsection{Feature Extraction}
+Input data is a precious resource, and given that at least $10\%$ is going to be used for testing, 
+
+\subsection{TODO}
 \begin{enumerate}
 \item come \`e fatto $freq$?
 \item quanti sono gli istanti di tempo $t$?
+\item la percentuale di dati per fare il test \`e veramente il dieci per cento?
 \item quanti sono i fenomeni monitorati, esattamente?
 \item describe how to parse data and how to organize for testing
 \end{enumerate}
@@ -52,30 +54,49 @@ Totally, we have $< 200$ monitored phenomenons.
 
 
 \section{Problem}
-Basically the task consists in producing a binary classifier ($-1$ left, $+1$ right), though its implementation has been approached chaining two different classifiers by pipeline:
+Though basically the task consists in a binary classifier ($-1$ left, $+1$ right), the problem has been approached chaining by pipeline two different learning models:
 \begin{enumerate}
-\item the first classifier filters the data for a specific channel and attemps to give a specific classification (left, right); 
-\item the second one uses as input the various classifications on all channels for a specific trial, and expresses the result still in a binary classification left/right.
+\item the first one, filters the data for a specific channel and attemps to give a specific classification (left, right); 
+\item the second one, uses as input the various classifications on all channels for a specific trial, and expresses the result still in a binary classification left/right.
 \end{enumerate}
 
 
+\subsection{Channel Classification}
+
+The first classifier is a function
+$ f: (\begin{array}{l l l} freq_t, & \cdots, & freq_t \end{array}) \to [-1, 1]  $
+ expressing the best direction ($left=-1$, $right=+1$), in terms of \textit{most probable}. Since the dataset is known, but the desidered output is really difficult to argue and test, the learning model with easiest implementation is probably \textbf{Bayes}. In fact, we know the mean $\mu$ and we can play around with the covariance matrix $\Sigma$
+
+
+
+\subsection{Final Classification}
+The second classifier's task is to find a function
+ $$
+g: [-1, +1]^n \to \{-1, +1\}
+$$
+,  expressing the direction chosen by the user. In this case instead, we have desidered output known but a really variable input space. Hence, $g$ is a non-probabilistic, binary linear classifier, perfectly fitting the definition of a \textbf{SVM}.
+
+\subsection{TODO}
+\begin{enumerate}
+\item quali sono le motivazioni per aver concatenato due classificatiori? se non ricordo male era lo studio delle aree del cervello. giusto?
+\item would be ok, second classifier? 
+\item is rally the best, first classifier?
+\end{enumerate}
 
 \section{Implementation}
 The implementation is done in pure python, using \href{http://scikit-learn.org/stable/}{scikit-learn} module. 
 
-\vspace{10in}
-\textbf{TODO}:
+\subsection{TODO}:
 \begin{enumerate}
 \item  \href{https://en.wikibooks.org/wiki/LaTeX/Algorithms_and_Pseudocode}{pseudocodice per pseudoscienziati}
 \item introduction to the source code structure
 \item documentation
 \end{enumerate}
 
-s
+
 
 \section{Conclusions}
-\textbf{TODO}
-
+Machine Learning rocks.
 
 
 \end{document}
