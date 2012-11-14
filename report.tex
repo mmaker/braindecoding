@@ -14,12 +14,12 @@ The purpose of this project is to implement a two-step analysis and classificati
 
 
 \section{Introduction}
-Given a user shifting his attention to the left or to the right and monitoring the spatial and temporal status of the MEG signal, the goal is to build a classifier capable of brain-decode \textit{a-posteriori} towards which direction the user was actually shifting his attention.
+Given a user shifting his attention to the left or to the right and monitoring the spatial and temporal status of the MEG\cite{Biomag2010} signal, the goal is to build a classifier capable of brain-decode \textit{a-posteriori} towards which direction the user was actually shifting his attention.
 
 
 
 \section{Dataset}
-The phenomenom can be described as a set $\{(trial, direction)_i\}_{i= 1, 2, \dots, trials}$, where:
+The phenomenom can be described as a set $\{(trial_i, direction_i)\}_{i= 1, 2, \dots, trials}$, where:
 $$
 trial  = 
  \begin{bmatrix}
@@ -35,16 +35,18 @@ trial  =
    +1 & \text{if right}\\
  \end{array}\right .
 $$
-$freq$ is the MEG frequency, sonded for $t$ uniform intervals of time on each of the $n = 127$ channels.
-Totally, we have $< 200$ monitored trials.
+$freq$ is the MEG frequency, sonded for $t$ bands on each of the $n$ channels.
 
-\subsection{Feature Extraction}
+More precisely, $freq$ encodes the mean $t=6$ different bands:
+$2-4Hz, 4-8Hz, 8-13Hz, 13-20Hz, 20-35Hz, 35-46Hz$ taken from a single ($1$) subject on $n=274$ channels. 
+Globally, we have $255$ trials ($127$ left, $128$ right).  
+
 Input data is a precious resource, and given that at least $10\%$ is going to be used for testing, 
 
 \subsection{TODO}
 \begin{enumerate}
-\item come \`e fatto $freq$?
 \item quanti sono gli istanti di tempo $t$?
+\item \`e veramente la media delle varie frequenze quella che entra in gioco? 
 \item la percentuale di dati per fare il test \`e veramente il dieci per cento?
 \item quanti sono i fenomeni monitorati, esattamente?
 \item describe how to parse data and how to organize for testing
@@ -63,8 +65,10 @@ Though basically the task consists in a binary classifier ($-1$ left, $+1$ right
 
 \subsection{Channel Classification}
 
-The first classifier is a function
-$ f: (\begin{array}{l l l} freq_t, & \cdots, & freq_t \end{array}) \to [-1, 1]  $
+The first classifier is a vector of functions
+$ \{f_0, f_1, \dots, f_n \}$ 
+, one for each channel, defined:
+$ f: (\begin{array}{l l l} freq_{i, j}, & \cdots, & freq_{i, j} \end{array}) \to [-1, 1]  $
  expressing the best direction ($left=-1$, $right=+1$), in terms of \textit{most probable}. Since the dataset is known, but the desidered output is really difficult to argue and test, the learning model with easiest implementation is probably \textbf{Bayes}. In fact, we know the mean $\mu$ and we can play around with the covariance matrix $\Sigma$
 
 
@@ -74,7 +78,7 @@ The second classifier's task is to find a function
  $$
 g: [-1, +1]^n \to \{-1, +1\}
 $$
-,  expressing the direction chosen by the user. In this case instead, we have desidered output known but a really variable input space. Hence, $g$ is a non-probabilistic, binary linear classifier, perfectly fitting the definition of a \textbf{SVM}.
+    ,  expressing the direction chosen by the user. In this case instead, we have desidered output known but a really variable input space. Hence, $g$ is a non-probabilistic, binary linear classifier, perfectly fitting the definition of a \textbf{SVM}.
 
 \subsection{TODO}
 \begin{enumerate}
@@ -98,6 +102,13 @@ The implementation is done in pure python, using \href{http://scikit-learn.org/s
 \section{Conclusions}
 Machine Learning rocks.
 
+\begin{thebibliography}{9}
+
+\bibitem{Biomag2010}
+Marcel van Gerven, Ole Jensen,
+\emph{Attention modulations of posterior alpha as a control signal for two-dimensional brain–computer interfaces},
+Journal of Neuroscience Methods, 2009
+\end{thebibliography}
 
 \end{document}
 

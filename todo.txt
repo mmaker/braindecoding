@@ -1,0 +1,38 @@
+Homepage on LinkedIn: http://www.linkedin.com/in/morru
+
+
+== ML Course Project ==
+
+Hypothesis for Project Proposal and more informations at [https://github.com/mmaker/braindecoding]
+Section Dataset
+* may be in the near future we provide an encoding where frequency are computed on subintervals of the whole trial duration, i.e. 't' will be a multiple of 6
+
+Section Problem
+* the 'first' classifier is not just one classifier but many of them, one for each channel
+* the Section should be organized better: first introduce the idea of stacking the classifiers, one channel specific, one for the whole brain.
+* define for each classifier the format of the data in input and the data in output
+* the introduction of the second layer classifier doesn't explain that you first build a new dataset aggregating the results of the first layer classification
+* you should keep separated the definition/formulation of the problem from the implementation: 'Bayes' and 'SMV' are design choices
+* it is not clear what is 'Bayes', do you mean 'NaiveBayes Classifier' a specific learning model?
+* after the illustration of the architecture of stacked classifiers you can refer to the implementation choices: first layer => naive bayes, second layer => SVM (it is just an example)
+* the motivation for 'stacking' the classifiers is to reduce the dimensionality of feature space and achieving a better balance between the number of instances and the number of features
+
+New Section
+* you should introduce a new Section after Section 3 devoted to describe the process of evaluation of the stacked classifiers.
+* the new section should sketch the procedure to train and test the proposed stacked architecture
+* this part is the most tricky one of the project; do not underestimate its complexity
+* the first part of the Section should state what kind of evaluation measure you will apply (you may start considering the 'accuracy' as reference evaluation measure)
+* the second part should sketch the procedure to estimate without bias the evaluation measure (this is the core of the project)
+* we should discuss carefully the design of this procedure once you have a first version
+
+Additional new Section
+* here you should illustrate what kind of empirical analysis you plan to perform
+* here you will report also the results of your empirical assessment
+* do a first hypothesis of what you are planning to test
+* we discuss this plan before to implement it
+
+Next steps
+* Danilo will give you a copy of data according to the description above
+* Contact in advance Danilo to find an agreement on data format
+* Next version of the report
+* Discussion of the evaluation procedure (see new section)
