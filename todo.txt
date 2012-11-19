@@ -1,4 +1,4 @@
-Homepage on LinkedIn: http://www.linkedin.com/in/morru
+Homepage on LinkedIn: http://www.linkedin.com/in/morru
 
 
 == ML Course Project ==
@@ -8,14 +8,7 @@ Section Dataset
 * may be in the near future we provide an encoding where frequency are computed on subintervals of the whole trial duration, i.e. 't' will be a multiple of 6
 
 Section Problem
-* the 'first' classifier is not just one classifier but many of them, one for each channel
-* the Section should be organized better: first introduce the idea of stacking the classifiers, one channel specific, one for the whole brain.
 * define for each classifier the format of the data in input and the data in output
-* the introduction of the second layer classifier doesn't explain that you first build a new dataset aggregating the results of the first layer classification
-* you should keep separated the definition/formulation of the problem from the implementation: 'Bayes' and 'SMV' are design choices
-* it is not clear what is 'Bayes', do you mean 'NaiveBayes Classifier' a specific learning model?
-* after the illustration of the architecture of stacked classifiers you can refer to the implementation choices: first layer => naive bayes, second layer => SVM (it is just an example)
-* the motivation for 'stacking' the classifiers is to reduce the dimensionality of feature space and achieving a better balance between the number of instances and the number of features
 
 New Section
 * you should introduce a new Section after Section 3 devoted to describe the process of evaluation of the stacked classifiers.
