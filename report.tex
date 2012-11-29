@@ -11,7 +11,7 @@
 \maketitle
 
 \begin{abstract}
-The purpose of this project is to implement a two-step analysis and classification of magnetoencephalography (MEG) data. 
+The purpose of this project is to implement a two-step analysis and classification of magnetoencephalography(MEG) data. 
 \end{abstract}
 
 
@@ -22,9 +22,23 @@ Given a user shifting his attention to the left or to the right and monitoring t
 
 
 \section{Dataset}
-The phenomenom can be described as a set $\{(trial_i, direction_i)\}_{i= 1, 2, \dots, trials}$, where:
+in the following we describe how the input data was given, and how it is structured. 
+
+Input data was taken from the Biomag 2010 contest, first analyzed in 
+\cite{Biomag2010} and then in \cite{Braindecoding}: it consists in
+ magnetoencephalography(MEG) data collected from 15 subjects who were engaged in
+a task where they covertly had to visually attend left, right, up, or down during a
+period of 2500\milli\second. 
+MEG data was then transformated using spectral energy distribution COSA VUOL DIRE
+and then compressed in two numpy pickled binary files (\texttt{\.npz}), 
+namely \texttt{freq\_left\_gradient.npy.npz} and 
+\texttt{freq\_left\_gradient.npy.npz}.
+
+The phenomenom has been described as a vector
+$\{(trial_i, direction_i)\}_{i= 1, 2, \dots, trials}$, where:
+
 $$
-trial_i  = 
+trial_i  = t
  \begin{bmatrix}
    freq_{0, 0} & freq_{0, 1} & \cdots & freq_{0, t}  \\
    freq_{1, 0} & freq_{1, 1} & \cdots & freq_{1, t}  \\
@@ -45,7 +59,7 @@ $\{2..4, 4..8, 8..13, 13..20, 20..35, 35..46\}$ $\hertz$ .
 Globally, we have $255$ trials ($127$ left, $128$ right) taken over one single ($1$) subject.  
 
 
-\section{Problem}
+\section{Problem Formulation}
 The problem of classifying the shift of attention to
 the left ($-1$) or to the right ($-1$) has been
 approached by stacking\cite{Wolpert92} two different
@@ -73,7 +87,6 @@ k \in \{0, \dots, n\}
 \end{array}
 $$ 
 
-
 \paragraph{Second Step} we are looking for a funciton expressing the global output as a boolean value, given the localized information about each channel previously discovered and then aggregated:
 $$
 g: [-1, +1]^n \to \{-1, +1\}
@@ -81,8 +94,14 @@ $$
 
 
 \subsection{Learning Model}
-Learning model for the first classifier has been chosen to be \textbf{Naive Bayesan}. In fact non ha senso presupporre indipendenza del modello in una rete come il cervello, but for didactic purposes ci hanno insegnato solo questo.
- For the second case instead, I assumed the classifier $g$ to be  a non-probabilistic, binary and linear, hence I opted for \textbf{SVM} related to the second part of the course.
+
+\paragraph{First Step} each of the ${f_k}$ function has been trained using a \textbf{non-linear SVM classifier}.
+
+Non-linear SVM classifiers are modeled 
+
+\paragraph{Second Step} $g$ instead, was trained using a simple \textbf{norm-one classifier}
+Norm-one classifiers simple attempt to define the linear hyperplane 
+$w^T + w_0$ using $||w||_1$
 
 
 \subsection{Evaluations for Stacking}
@@ -116,15 +135,19 @@ write here some algorithmic using \href{https://en.wikibooks.org/wiki/LaTeX/Algo
 
 
 \section{Conclusions}
-Machine Learning rocks.
+Before the descrived learning model, others were tested.
+[\dots]
+As a closing conclusion, we highlight the main foundings of the project.
+[\dots]
+
+
+
 
 \begin{thebibliography}{9}
-
 \bibitem{Biomag2010}
 Marcel van Gerven, Ole Jensen,
-\emph{Attention modulations of posterior alpha as a control signal for two-dimensional brain–computer interfaces},
+\emph{Attention modulations of posterior alpha as a control signal for two-dimensional brain-computer interfaces},
 Journal of Neuroscience Methods, 2009
-
 
 \bibitem{Wolpert92}
 David H. Wolpert,
