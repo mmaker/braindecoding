@@ -1,12 +1,17 @@
 #coding: utf-8
 from __future__ import division
 import os.path
+import warnings
 
 import numpy as np
 import pylab as pl
 from sklearn import svm, cross_validation
 
 _curdir = os.path.dirname(__file__)
+
+# hide shitty gtk+ warning messages.
+warnings.simplefilter("ignore")
+
 
 def preprocess():
     """
@@ -42,19 +47,49 @@ def preprocess():
                    for trial in range(samples)]
         dataset[direction] = features
 
+    print 'dataset preprocessed, saving..'
     np.savez_compressed(os.path.join(_curdir, 'dataset'), **dataset)
 
+def learn():
+    dataset = np.load(os.path.join(_curdir, 'dataset.npz'))
+    labels = dataset['label']
+    trials, channels, freqs = map(xrange, dataset['left'].shape)  # ~ dataset['right'].shape
+    # set up first classifier
+    fst = [svm.SVC(degree=7, kernel='sigmoid') for channel in channels]
+    fst.append(svm.SVC())
+    # set up second classifier
+    snd = svm.LinearSVC(penalty='l1', dual=False)
+    snd_ishape = len(freqs) * len(channels)
 
-# dataset = np.load(os.path.join(_curdir, 'dataset.npz'))
-# labels = dataset['label']
-# trials, channels, freqs = dataset['left'].shape  # ~ dataset['right'].shape
-# # set up first classifier
-# fst = {channel : svm.SVC() for channel in dataset['label']}
-# fst['global'] = svm.SVC()
-#
-# kfold = cross_validation.KFold(trials-trials//10, n_folds=10)
-# # set up second classifier
-# snd = svm.SVC(loss='l1', penality='l1')
+    kfold = cross_validation.KFold(n=len(trials), k=10)
+    for training, testing in kfold:
+        for train in training:
+            for channel in channels:
+                fst[channel].fit([dataset['left'][train, channel], dataset['right'][train, channel]],
+                                 [-1, +1])
+                print 'training channel {} ({}/{})  \r'.format(
+                        labels[channel], channel, len(channels)),
+            fst[-1].fit(
+                [ np.reshape(dataset['left'][train], snd_ishape, order='F'),
+                  np.reshape(dataset['right'][train], snd_ishape, order='F'),
+                ],
+                [-1, +1])
+
+        # print accuracy
+        accuracy = sum(fst[channel].predict(dataset['left'][test, channel]) == [-1]
+                       for channel in channels for test in testing)
+        accuracy += sum(fst[channel].predict(dataset['right'][test, channel]) == [+1]
+                        for channel in channels for test in testing)
+        print '\n accuracy: {}%'.format(
+            accuracy * 100 / (2* len(channels)*len(testing)),
+            len(accuracy)
+        )
+        # train second dataset
+#    snd.train(
+#      [fst[channel].predict(dataset['left', test, i]) for i, channel in enumerate(labels)],
+
+
+
 
 if __name__ == '__main__':
     import argparse
@@ -64,8 +99,15 @@ if __name__ == '__main__':
                         dest='preprocess',
                         help='Preprocess datased given by CIMeC',
     )
+    parser.add_argument('-l', '--learn',
+                        action='store_true',
+                        dest='learn',
+                        help='learn using the stacked classifier'
+    )
     args = parser.parse_args()
     if args.preprocess:
         preprocess()
-    else:
+    if args.learn:
+        learn()
+    if not any(vars(args)):
         parser.print_help()
