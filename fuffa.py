@@ -2,6 +2,7 @@
 from __future__ import division
 import os.path
 import warnings
+import itertools
 
 import numpy as np
 import pylab as pl
@@ -50,44 +51,66 @@ def preprocess():
     print 'dataset preprocessed, saving..'
     np.savez_compressed(os.path.join(_curdir, 'dataset'), **dataset)
 
-def learn():
+
+def plot():
+    """
+    Plot dataset in a pretty way.
+    """
     dataset = np.load(os.path.join(_curdir, 'dataset.npz'))
     labels = dataset['label']
-    trials, channels, freqs = map(xrange, dataset['left'].shape)  # ~ dataset['right'].shape
-    # set up first classifier
-    fst = [svm.SVC(degree=7, kernel='sigmoid') for channel in channels]
-    fst.append(svm.SVC())
+    trials, channels, freqs = map(xrange, dataset['left'].shape)
+
+
+def learn(c=None, kernel='rbf', **kwargs):
+    dataset = np.load(os.path.join(_curdir, 'dataset.npz'))
+    labels = dataset['label']
+    dataset = ([(x, -1) for x in dataset['left']] +
+               [(x, +1) for x in dataset['right']])
+    trials = len(dataset)
+    if c is None:
+        c = trials//2
+    channels, freqs = map(xrange, dataset[0][0].shape)  # ~dataset[0][n]
+    # set up first classifier, composed of one classifier per each channel, plus
+    # one global.
+    fst = [svm.SVC(kernel=kernel, C=c, **kwargs)
+           for channel in range(len(channels)+1)]
     # set up second classifier
     snd = svm.LinearSVC(penalty='l1', dual=False)
-    snd_ishape = len(freqs) * len(channels)
+    globalshape = len(freqs) * len(channels)
 
-    kfold = cross_validation.KFold(n=len(trials), k=10)
-    for training, testing in kfold:
-        for train in training:
+    # notation: 'o' stands for 'outer', 'i' for inner
+    ofold = cross_validation.KFold(n=trials, k=10)
+    for otrains, otests in ofold:
+        otraining = [dataset[x] for x in otrains]
+        otesting = np.array([dataset[x] for x in otests], object).T
+        ifold = cross_validation.KFold(n=len(otraining), k=10)
+        for itrains, itests in ifold:
+            itraining = np.array([otraining[x] for x in itrains], object).T
+            itesting = np.array([otraining[x] for x in itests], object).T
+
+            input, output = itraining
             for channel in channels:
-                fst[channel].fit([dataset['left'][train, channel], dataset['right'][train, channel]],
-                                 [-1, +1])
+                fst[channel].fit(input[channel], output)
                 print 'training channel {} ({}/{})  \r'.format(
                         labels[channel], channel, len(channels)),
-            fst[-1].fit(
-                [ np.reshape(dataset['left'][train], snd_ishape, order='F'),
-                  np.reshape(dataset['right'][train], snd_ishape, order='F'),
-                ],
-                [-1, +1])
+            fst[-1].fit(np.reshape(input, globalshape), output)
 
-        # print accuracy
-        accuracy = sum(fst[channel].predict(dataset['left'][test, channel]) == [-1]
-                       for channel in channels for test in testing)
-        accuracy += sum(fst[channel].predict(dataset['right'][test, channel]) == [+1]
-                        for channel in channels for test in testing)
+            # print accuracy
+            accuracy = sum(fst[channel].predict(input[channel]) == output
+                           for channel in channels )
         print '\n accuracy: {}%'.format(
-            accuracy * 100 / (2* len(channels)*len(testing)),
+            accuracy[0] * 100 / (2* len(channels)*len(testing)),
             len(accuracy)
         )
         # train second dataset
-#    snd.train(
-#      [fst[channel].predict(dataset['left', test, i]) for i, channel in enumerate(labels)],
+        # snd.train(
+        #[fst[channel].predict(dataset['left', test, i]) for i, channel in enumerate(labels)],
 
+
+def tune():
+    """
+    Learn, using specific constraints.
+    """
 
 
 
@@ -99,6 +122,11 @@ if __name__ == '__main__':
                         dest='preprocess',
                         help='Preprocess datased given by CIMeC',
     )
+    parser.add_argument('-d', '--plot',
+                        action='store_true',
+                        dest='plot',
+                        help='plot the dataset'
+    )
     parser.add_argument('-l', '--learn',
                         action='store_true',
                         dest='learn',
@@ -107,7 +135,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.preprocess:
         preprocess()
+    if args.plot:
+        plot()
     if args.learn:
         learn()
-    if not any(vars(args)):
+    if not any(vars(args).values()):
         parser.print_help()
