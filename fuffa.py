@@ -1,8 +1,11 @@
 #coding: utf-8
 from __future__ import division
+from multiprocessing import Pool
 import os.path
 import warnings
 import itertools
+import signal
+import sys
 
 import numpy as np
 import pylab as pl
@@ -61,7 +64,7 @@ def plot():
     trials, channels, freqs = map(xrange, dataset['left'].shape)
 
 
-def learn(c=None, kernel='rbf', **kwargs):
+def learn(parameters=None):
     dataset = np.load(os.path.join(_curdir, 'dataset.npz'))
     labels = dataset['label']
     left = np.array([[x, -1] for x in dataset['left']])
@@ -69,15 +72,17 @@ def learn(c=None, kernel='rbf', **kwargs):
     dataset = np.concatenate((left, right))
 
     trials = dataset.shape[0]
-    if c is None:
-        c = trials//2
     channels, freqs = dataset[0][0].shape  # ~dataset[0][n]
     # assert all(dataset[trial][0].shape == (channels, freqs)
     #            for trial in xrange(trials))
 
     # set up first classifier, composed of one classifier per each channel, plus
     # one global.
-    fst = [svm.SVC(kernel=kernel, C=c, **kwargs)
+    if parameters is None:
+        parameters = dict(kernel='rbf',
+                          C=trials//2,
+        )
+    fst = [svm.SVC(**parameters)
            for channel in xrange(channels+1)]
     # set up second classifier
     snd = svm.LinearSVC(penalty='l1', dual=False)
@@ -122,11 +127,21 @@ def learn(c=None, kernel='rbf', **kwargs):
     )
 
 
-def tune():
+def tune(processes=None):
     """
     Learn, using specific constraints.
     """
+    # exit immediately with a KeyboardInterrupt
+    signal.signal(signal.SIGINT, sys.exit)
 
+    pool = Pool(processes)
+    parameters = []
+    parameters.extend(dict(kernel='rbf', C=c)
+                      for c in np.arange(10, 100, 0.5))
+    parameters.extend(dict(kernel='poly', C=c, gamma=gamma)
+                      for c in np.arange(10, 100, 0.5)
+                      for gamma in np.arange(0, 50, 0.5))
+    pool.map_async(learn, parameters).get()
 
 
 if __name__ == '__main__':
@@ -147,6 +162,14 @@ if __name__ == '__main__':
                         dest='learn',
                         help='learn using the stacked classifier'
     )
+    parser.add_argument('-t', '--tune',
+                        nargs='?',
+                        default=2,
+                        type=int,
+                        dest='tune',
+                        metavar='PROCESSES',
+                        help='sart up a pool'
+    )
     args = parser.parse_args()
     if args.preprocess:
         preprocess()
@@ -154,5 +177,7 @@ if __name__ == '__main__':
         plot()
     if args.learn:
         learn()
+    if args.tune:
+        tune(args.tune)
     if not any(vars(args).values()):
         parser.print_help()
