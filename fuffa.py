@@ -64,47 +64,62 @@ def plot():
 def learn(c=None, kernel='rbf', **kwargs):
     dataset = np.load(os.path.join(_curdir, 'dataset.npz'))
     labels = dataset['label']
-    dataset = ([(x, -1) for x in dataset['left']] +
-               [(x, +1) for x in dataset['right']])
-    trials = len(dataset)
+    left = np.array([[x, -1] for x in dataset['left']])
+    right = np.array([[x, +1] for x in dataset['right']])
+    dataset = np.concatenate((left, right))
+
+    trials = dataset.shape[0]
     if c is None:
         c = trials//2
-    channels, freqs = map(xrange, dataset[0][0].shape)  # ~dataset[0][n]
+    channels, freqs = dataset[0][0].shape  # ~dataset[0][n]
+    # assert all(dataset[trial][0].shape == (channels, freqs)
+    #            for trial in xrange(trials))
+
     # set up first classifier, composed of one classifier per each channel, plus
     # one global.
     fst = [svm.SVC(kernel=kernel, C=c, **kwargs)
-           for channel in range(len(channels)+1)]
+           for channel in xrange(channels+1)]
     # set up second classifier
     snd = svm.LinearSVC(penalty='l1', dual=False)
-    globalshape = len(freqs) * len(channels)
+    globalshape = freqs * channels
 
     # notation: 'o' stands for 'outer', 'i' for inner
     ofold = cross_validation.KFold(n=trials, k=10)
-    for otrains, otests in ofold:
-        otraining = [dataset[x] for x in otrains]
-        otesting = np.array([dataset[x] for x in otests], object).T
+    for otraining, otesting in ofold:
         ifold = cross_validation.KFold(n=len(otraining), k=10)
         for itrains, itests in ifold:
-            itraining = np.array([otraining[x] for x in itrains], object).T
-            itesting = np.array([otraining[x] for x in itests], object).T
+            itraining = otraining[itrains]
+            itesting = otraining[itests]
 
-            input, output = itraining
-            for channel in channels:
-                fst[channel].fit(input[channel], output)
+            input, output = dataset[itraining].T
+            # fuck you, numpy.
+            input = np.array([x for x in input])
+            for channel in xrange(channels):
+                fst[channel].fit(input[:, channel], output)
                 print 'training channel {} ({}/{})  \r'.format(
-                        labels[channel], channel, len(channels)),
-            fst[-1].fit(np.reshape(input, globalshape), output)
+                        labels[channel], channel, channels),
+            fst[-1].fit(np.reshape(input, (-1, globalshape), order='F'), output)
 
-            # print accuracy
-            accuracy = sum(fst[channel].predict(input[channel]) == output
-                           for channel in channels )
-        print '\n accuracy: {}%'.format(
-            accuracy[0] * 100 / (2* len(channels)*len(testing)),
-            len(accuracy)
-        )
+            ## wtf am i doing here. ##
+            accuracy = np.mean([sum(fst[channel].predict(input[:, channel]) == output)
+                                for channel in range(channels)])
+            print '\n accuracy: {}/{}'.format(
+                accuracy, channels
+            )
+
         # train second dataset
-        # snd.train(
-        #[fst[channel].predict(dataset['left', test, i]) for i, channel in enumerate(labels)],
+        input, output = dataset[otraining].T
+        input = np.array([x for x in input])
+        input = np.array([fst[channel].predict(input[:, channel])
+                          for channel in range(channels)]).T
+        snd.fit(input, output)
+
+    # save somewhere, classifiers
+    np.savez_compressed(
+        os.path.join(_curdir, 'learners-kernel_{}-c_{}'.format(kernel, c)),
+        first=fst,
+        second=snd,
+    )
 
 
 def tune():
