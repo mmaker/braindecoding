@@ -125,10 +125,12 @@ def learn(parameters=None):
             fst[-1].fit(np.reshape(input, (-1, globalshape), order='F'), output)
 
             ## wtf am i doing here. ##
+            input, output = dataset[itesting].T
+            input = np.array([x for  x in input])
             accuracy = np.mean([sum(fst[channel].predict(input[:, channel]) == output)
                                 for channel in range(channels)])
             print '\n accuracy: {}/{}'.format(
-                accuracy, channels
+                accuracy, len(input),
             )
 
         # train second dataset
@@ -140,7 +142,7 @@ def learn(parameters=None):
 
     # save somewhere, classifiers
     np.savez_compressed(
-        os.path.join(_curdir, 'learners-kernel_{}-c_{}'.format(kernel, c)),
+        os.path.join(_curdir, 'learners-{}'.format(str(parameters))),
         first=fst,
         second=snd,
     )
