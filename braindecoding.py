@@ -82,6 +82,14 @@ def plot():
     labels = dataset['label']
     trials, channels, freqs = map(xrange, dataset['left'].shape)
 
+def accuracy(cm):
+    """
+    Multiclass accuracy defined as:
+      sum over diagonal / sum over all matrix
+    given the confusion matrix.
+    """
+    return np.sum(cm.diagonal()) / np.sum(cm)
+
 
 def learn(parameters=None):
     dataset = np.load(os.path.join(_curdir, 'dataset.npz'))
@@ -127,10 +135,11 @@ def learn(parameters=None):
             ## wtf am i doing here. ##
             input, output = dataset[itesting].T
             input = np.array([x for  x in input])
-            accuracy = np.mean([sum(fst[channel].predict(input[:, channel]) == output)
-                                for channel in range(channels)])
-            print '\n accuracy: {}/{}'.format(
-                accuracy, len(input),
+            predicted =[fst[channel].predict(input[:, channel]) for channel in range(channels)]
+            accuracies = [accuracy(confusion_matrix(output, x))
+                          for x in predicted]
+            print '\n accuracy: {}%'.format(
+                np.mean(accuracies) * 100,
             )
 
         # train second dataset
@@ -185,7 +194,7 @@ if __name__ == '__main__':
     )
     parser.add_argument('-t', '--tune',
                         nargs='?',
-                        default=2,
+                        default=False,
                         type=int,
                         dest='tune',
                         metavar='PROCESSES',
