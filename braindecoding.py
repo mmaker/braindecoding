@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #coding: utf-8
 from __future__ import division
 from multiprocessing import Pool
@@ -10,7 +11,7 @@ import sys
 import numpy as np
 import pylab as pl
 from sklearn import svm, cross_validation
-
+from sklearn.metrics import zero_one_score as accuracy
 
 __author__ = 'Michele Orru`'
 __email__ = 'maker@python.it'
@@ -59,19 +60,23 @@ def preprocess():
     left = np.load(os.path.join(_curdir, 'freq_left_gradient.npy.npz'))
     right = np.load(os.path.join(_curdir, 'freq_right_gradient.npy.npz'))
 
-    dataset = dict()
-    dataset['label'] = left['label']  # = right['label']
-    for direction, trials in ('left', left['lf_freq']), ('right', right['rg_freq']):
+    dataset = []
+    for trials, direction in (left['lf_freq'], -1), (right['rg_freq'], +1):
         samples, channels, freqs = trials.shape
         step = freqs // 6
-        features = [[[np.mean(trials[trial][channel][start:start+step])
-                     for start in range(0, freqs, step)]
-                    for channel in range(channels)]
-                   for trial in range(samples)]
-        dataset[direction] = features
+        for sample in xrange(samples):
+            trial = np.array(
+                [[np.mean(trials[sample][channel][start:start+step])
+                  for start in range(0, freqs, step)]
+                 for channel in xrange(channels)]
+            )
+            dataset.append((trial, direction))
 
     print 'dataset preprocessed, saving..'
-    np.savez_compressed(os.path.join(_curdir, 'dataset'), **dataset)
+    np.savez_compressed(os.path.join(_curdir, 'dataset'),
+                        dataset=np.array(dataset, dtype=object, copy=False),
+                        label=left['label']    #=right['label']
+    )
 
 
 def plot():
@@ -80,81 +85,88 @@ def plot():
     """
     dataset = np.load(os.path.join(_curdir, 'dataset.npz'))
     labels = dataset['label']
-    trials, channels, freqs = map(xrange, dataset['left'].shape)
-
-def accuracy(cm):
-    """
-    Multiclass accuracy defined as:
-      sum over diagonal / sum over all matrix
-    given the confusion matrix.
-    """
-    return np.sum(cm.diagonal()) / np.sum(cm)
+    left = dataset['left']
+    right = dataset['right']
+    trials, channels, freqs = map(xrange, left.shape)
 
 
 def learn(parameters=None):
-    dataset = np.load(os.path.join(_curdir, 'dataset.npz'))
-    labels = dataset['label']
-    left = np.array([[x, -1] for x in dataset['left']])
-    right = np.array([[x, +1] for x in dataset['right']])
-    dataset = np.concatenate((left, right))
+    parameters = parameters or dict(kernel='rbf',
+                                    C=100)
+    npz = np.load(os.path.join(_curdir, 'dataset.npz'))
+    labels = npz['label']
+    dataset = npz['dataset']
+    best = type('best', (object, ), dict(fst=None, snd=None, acc=0))
 
-    trials = dataset.shape[0]
-    channels, freqs = dataset[0][0].shape  # ~dataset[0][n]
-    # assert all(dataset[trial][0].shape == (channels, freqs)
-    #            for trial in xrange(trials))
+    trials = len(dataset)
+    channels, freqs = dataset[0][0].shape  # ~dataset[n][0]
+    globalshape = freqs * channels
+
+    assert all(dataset[trial][0].shape == (channels, freqs)
+               for trial in xrange(trials))
 
     # set up first classifier, composed of one classifier per each channel, plus
     # one global.
-    if parameters is None:
-        parameters = dict(kernel='rbf',
-                          C=trials//2,
-        )
     fst = [svm.SVC(**parameters)
            for channel in xrange(channels+1)]
     # set up second classifier
     snd = svm.LinearSVC(penalty='l1', dual=False)
-    globalshape = freqs * channels
+
+    # shuffle dataset at start
+    np.random.shuffle(dataset)
 
     # notation: 'o' stands for 'outer', 'i' for inner
     ofold = cross_validation.KFold(n=trials, k=10)
-    for otraining, otesting in ofold:
-        ifold = cross_validation.KFold(n=len(otraining), k=10)
-        for itrains, itests in ifold:
-            itraining = otraining[itrains]
-            itesting = otraining[itests]
+    for training, testing in ofold:
+        # select features from the dataset
+        training = dataset[training]
+        testing = dataset[testing]
 
-            input, output = dataset[itraining].T
+        ifold = cross_validation.KFold(n=len(training), k=10)
+        testing_input, testing_output = testing.T
+        testing_input = np.array([x for x in testing_input])
+
+        for training1, training2 in ifold:
+            training1 = training[training1]
+            training2 = training[training2]
+
+            input, output = training1.T
             # fuck you, numpy.
             input = np.array([x for x in input])
             for channel in xrange(channels):
                 fst[channel].fit(input[:, channel], output)
-                print 'training channel {} ({}/{})  \r'.format(
-                        labels[channel], channel, channels),
+                # print 'training channel {} ({}/{})  \r'.format(
+                #         labels[channel], channel, channels),
             fst[-1].fit(np.reshape(input, (-1, globalshape), order='F'), output)
 
-            ## wtf am i doing here. ##
-            input, output = dataset[itesting].T
-            input = np.array([x for  x in input])
-            predicted =[fst[channel].predict(input[:, channel]) for channel in range(channels)]
-            accuracies = [accuracy(confusion_matrix(output, x))
-                          for x in predicted]
-            print '\n accuracy: {}%'.format(
-                np.mean(accuracies) * 100,
-            )
+            # train second classifier, using predicted data from other
+            # classifiers
+            input, output = training2.T
+            input = np.array([x for x in input])
+            input = np.array([fst[channel].predict(input[:, channel])
+                              for channel in xrange(channels)]).T
+            snd.fit(input, output)
 
-        # train second dataset
-        input, output = dataset[otraining].T
-        input = np.array([x for x in input])
-        input = np.array([fst[channel].predict(input[:, channel])
-                          for channel in range(channels)]).T
-        snd.fit(input, output)
-
-    # save somewhere, classifiers
-    np.savez_compressed(
-        os.path.join(_curdir, 'learners-{}'.format(str(parameters))),
-        first=fst,
-        second=snd,
-    )
+            # evaluate learner's accuracy. If an acceptable one is found, quit
+            # immediately. Otherwise, compare with the best.
+            predicted = np.array([fst[channel].predict(testing_input[:, channel])
+                                  for channel in xrange(channels)]).T
+            predicted = [snd.predict(x) for x in predicted]
+            acc = accuracy(testing_output, predicted)
+            if acc > best.acc:
+                best.fst = fst
+                best.snd = snd
+                best.acc = acc
+                print 'accuracy: {}% with parameters {}'.format(acc*100, str(parameters))
+            if acc > .95:
+                # save somewhere, classifiers
+                np.savez_compressed(
+                  os.path.join(_curdir,
+                      'learners-{}-acc{}'.format(str(parameters), acc)),
+                  first=fst,
+                  second=snd,
+                )
+                return
 
 
 def tune(processes=None):
