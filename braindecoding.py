@@ -2,6 +2,7 @@
 #coding: utf-8
 from __future__ import division
 from multiprocessing import Pool
+from copy import deepcopy
 import os.path
 import warnings
 import itertools
@@ -154,20 +155,21 @@ def learn(parameters=None):
             predicted = [snd.predict(x) for x in predicted]
             acc = accuracy(testing_output, predicted)
             if acc > best.acc:
-                best.fst = fst
-                best.snd = snd
+                best.fst = deepcopy(fst)
+                best.snd = deepcopy(snd)
                 best.acc = acc
-                print 'accuracy: {}% with parameters {}'.format(acc*100, str(parameters))
-            if acc > .95:
+            if acc > .75:
                 # save somewhere, classifiers
                 np.savez_compressed(
                   os.path.join(_curdir,
-                      'learners-{}-acc{}'.format(str(parameters), acc)),
+                      'learners-{}-acc{}'.format(str(parameters), int(acc*100))),
                   first=fst,
                   second=snd,
                 )
-                return
-
+                print 'WHOA: {}%, parameters: {}'.format(round(acc*100, 2), str(parameters))
+    else:
+        print 'BEST: {}%, parameters: {}'.format(round(best.acc*100, 2), str(parameters))
+        return best
 
 def tune(processes=None):
     """
@@ -179,10 +181,10 @@ def tune(processes=None):
     pool = Pool(processes)
     parameters = []
     parameters.extend(dict(kernel='rbf', C=c)
-                      for c in np.arange(10, 100, 0.5))
+                      for c in np.arange(50, 100, 0.5))
     parameters.extend(dict(kernel='poly', C=c, gamma=gamma)
-                      for c in np.arange(10, 100, 0.5)
-                      for gamma in np.arange(0, 50, 0.5))
+                      for c in np.arange(50, 100, 0.5)
+                      for gamma in np.arange(10, 30, 0.5))
     pool.map_async(learn, parameters).get()
 
 
