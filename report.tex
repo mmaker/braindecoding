@@ -6,10 +6,9 @@
 \usepackage{mathtools}
 \usepackage{amsfonts}
 \usepackage{unitsdef}
-
 \begin{document}
+\newcommand{\code}[1]{\texttt{#1}}
 \maketitle
-
 \begin{abstract}
 The purpose of this project is to implement a two-step analysis and classification of magnetoencephalography(MEG) data. 
 \end{abstract}
@@ -24,26 +23,43 @@ Given a user shifting his attention to the left or to the right and monitoring t
 \section{Dataset}
 in the following we describe how the input data was given, and how it is structured. 
 
+\noindent
 Input data was taken from the Biomag 2010 contest, first analyzed in 
 \cite{Biomag2010} and then in \cite{Braindecoding}: it consists in
  magnetoencephalography(MEG) data collected from 15 subjects who were engaged in
 a task where they covertly had to visually attend left, right, up, or down during a
 period of 2500\milli\second. 
-MEG data was then transformated using spectral energy distribution COSA VUOL DIRE
-and then compressed in two numpy pickled binary files (\texttt{\.npz}), 
-namely \texttt{freq\_left\_gradient.npy.npz} and 
-\texttt{freq\_left\_gradient.npy.npz}.
+Then, MEG data has been transformated using spectral energy distribution and compressed in two numpy pickled binary files
+ (\code{.npz}), namely \code{freq\_left\_gradient.npy.npz}
+ and \code{freq\_left\_gradient.npy.npz}.
 
-The phenomenom has been described as a vector
-$\{(trial_i, direction_i)\}_{i= 1, 2, \dots, trials}$, where:
+More formally, those files contains the dump of a dict-like area of memory, containing keys:
+\begin{verbatim}
+>>> np.load('freq_left_gradient.npy.npz')
+<numpy.lib.npyio.NpzFile object at 0x251cad0>
+>>> print _.keys()
+['sample_freq', 'lf_freq', 'time', 'label', 'fsample']
+\end{verbatim}
+
+\code{time}, \code{label}, and \code{sample\_freq} are vectors labelling respectively when, where, and on which frequency data was sampled.
+\code{lf\_freq} contains the real inputs (N.B., right samples contains key \code{rg\_freq}), espressed as a matrix $(127, 274, 376)$ $trials \times channel \times frequency$.
+
+\paragraph{Preprocessing} is implemented in the \code{preprocess()} function, in order to reduce dimensionality of the input space, and have quicker access to the features. It simply extracts data from the previously discussed files, and outputs a \code{dataset.npz} dict-like, having keys:
+\begin{verbatim}
+>>> np.load('dataset.npz')
+<numpy.lib.npyio.NpzFile object at 0x25e31d0>
+>>> _.keys()
+['label', 'dataset']
+\end{verbatim}
+where \code{label} contains labelling information for each channel, and \code{dataset} is a vector $\{(trial_i, direction_i)\}_{i= 1, 2, \dots, trials}$, such that:
 
 $$
-trial_i  = t
+trial_i  = 
  \begin{bmatrix}
-   freq_{0, 0} & freq_{0, 1} & \cdots & freq_{0, t}  \\
-   freq_{1, 0} & freq_{1, 1} & \cdots & freq_{1, t}  \\
+   freq_{0, 0} & freq_{0, 1} & \cdots & freq_{0, b}  \\
+   freq_{1, 0} & freq_{1, 1} & \cdots & freq_{1, b}  \\
    \vdots      & \vdots      & \ddots & \vdots       \\
-   freq_{n, 0} & freq_{n, 1} & \cdots & freq_{n, t} 
+   freq_{n, 0} & freq_{n, 1} & \cdots & freq_{n, b} 
  \end{bmatrix}
 \hspace{30pt}
  direction_i = \left\{
@@ -52,11 +68,11 @@ trial_i  = t
    +1 & \text{if right}\\
  \end{array}\right .
 $$
-
-More precisely, $trial_i \in \mathbb{R} ^{n+t}$ represents over each row one of the $n=274$ channels sonded, and over each column the mean for each of the $t=6$ different band ranges, respectively:
-$\{2..4, 4..8, 8..13, 13..20, 20..35, 35..46\}$ $\hertz$ .
-
-Globally, we have $255$ trials ($127$ left, $128$ right) taken over one single ($1$) subject.  
+More precisely, $trial_i \in \mathbb{R} ^{n+b}$ represents over each row one of the $n=274$ channels sonded, and over each column the mean for each of the $b=7$ different band ranges, respectively:
+$$
+\{0.0 \dots 24.7,\ 24.7 \dots 49.5,\ 49.5 \dots 74.2,\ 74.2 \dots 98.9,\ 98.9 \dots 123.7,\ 123.7 \dots 148.4\} \ \hertz
+$$
+Globally, we have $255$ trials ($127$ left, $128$ right).
 
 
 \section{Problem Formulation}
@@ -76,7 +92,7 @@ achieve a most accurate learning model extending the crossvalidation concept, as
 
 \subsection{Formalization} 
 
-\paragraph{First Step} is a set of function 
+\paragraph{First Step} as stated above, is a vector of function 
 $ \{f_0, f_1, \dots, f_n \}$ 
 taking as input the frequency bands, for a specific trial over all trials and expressing the best direction ($left=-1$, $right=+1$), in terms of confidence within the interval $[-1, +1]$. Hence, we can define them as:
 $$
@@ -95,27 +111,46 @@ $$
 
 \subsection{Learning Model}
 
-\paragraph{First Step} each of the ${f_k}$ function has been trained using a \textbf{non-linear SVM classifier}.
-
-Non-linear SVM classifiers are modeled 
+\paragraph{First Step} each of the ${f_k}$ function has been trained using a \textbf{non-linear SVM classifier}, with \emph{gaussian} and \emph{polynomial} kernels. 
 
 \paragraph{Second Step} $g$ instead, was trained using a simple \textbf{norm-one classifier}
-Norm-one classifiers simple attempt to define the linear hyperplane 
-$w^T + w_0$ using $||w||_1$
+Norm-one classifiers simpl
+e attempt to define the linear hyperplane 
+$g(\boldsymbol{x}) = w^T\boldsymbol{x} + w_0$ using $||w||_1$
 
 
 \subsection{Evaluations for Stacking}
-describe here the process of evaluation for stacked classifers, sketching the procedure to train and test the proposed stacked architecture.
 
+The stacked architecture adds extra complexity to the model for feature selection. In fact, constraints for features selection must be that: 
+\begin{itemize}
+\item $f_k$'s training set \emph{must} not have examples in common with the validation set;
+\item $g$'s training set \emph{must} not have examples in common with the validation set;
+\item $f_k$'s training set \emph{should} have null intersection with the $g$ training set.
+\end{itemize}
+
+Hence, for supponting the the data in training and validation set; and another one inner, using the training data of the outer set for training both the $f_k$ and $g$. 
 
 \subsection{Training}
-ho to train data?
+
+The first step is to train each channel-specific learner, using the selected features for training, filtered for the specic channel. 
+\begin{verbatim}
+fst[channel].fit(input[:, channel], output)
+\end{verbatim}
+
+\noindent
+Then, the second classifier is trained using the selected features for the second training step, applied to the first layer of learners.
+\begin{verbatim}
+input = np.array([fst[channel].predict(input[:, channel])
+                   for channel in xrange(channels)]).T
+snd.fit(input, output)
+
+\end{verbatim}
 
 
 \subsection{Validation}
-use 10-fold crossvalidation.
-
-
+Each round of cross-validation involves a combination of $f_k$s and $g$ which is eventually saved to disk if its accuracy is over $75\%$. 
+Globally, only the tuple of learners having best accuracy is considered.
+Besides all this, tuning of the parameters has been done on the output logs.
 
 \section{Implementation}
 The implementation is done in pure 
@@ -129,25 +164,30 @@ Source code is available on
 \href{https://github.com/mmaker/braindecoding}{GitHub}.
 
 \subsection{Code Structure}
-bulabulabula
-\subsection{Crucial Parts}
-write here some algorithmic using \href{https://en.wikibooks.org/wiki/LaTeX/Algorithms_and_Pseudocode}{pseudocodice per pseudoscienziati}
-
+File \code{braindecoding.py} handles all the works. It is composed of three main functions, each one bindend to a specific command: 
+\begin{itemize}
+\item \code{preprocess()}, binded to \code{-p}, performs the preprocessing discussed in \ref{sec:Dataset};
+\item \code{learn(parameters=None)}, binded to \code{-l}, performs the learning as described in \ref{sec:Learning Model};
+\item \code{tune(processes=None)}, binded to \code{-t}, starts up a pool of processes, each one computing a \code{learn()} function. Used for validation.
+\end{itemize}
 
 \section{Conclusions}
-Before the descrived learning model, others were tested.
-[\dots]
-As a closing conclusion, we highlight the main foundings of the project.
-[\dots]
+Performance has been evaluated only computing the accuracy of the outer classifier. Even thouth succint, is a valuable method for having an idea of the flexibility of the learner.
 
+
+Examining files \code{output.log} shown that \emph{polynomial} kernels had a higher density of learners above the $75\%$ of accuracy.
+
+Further improvements of the learner could have been achieved adding the standard deviation, next to the mean of the frequencies, as inputs for the first layer of learners; but still, they have not been implemented for a pure matter of time.
 
 
 
 \begin{thebibliography}{9}
+
 \bibitem{Biomag2010}
 Marcel van Gerven, Ole Jensen,
 \emph{Attention modulations of posterior alpha as a control signal for two-dimensional brain-computer interfaces},
 Journal of Neuroscience Methods, 2009
+
 
 \bibitem{Wolpert92}
 David H. Wolpert,
@@ -162,5 +202,3 @@ Brain Decoding Workshop, 2010
 \end{thebibliography}
 
 \end{document}
-
-
