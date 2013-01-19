@@ -2,10 +2,10 @@
 \title{\textbf{Machine Learning Project Report }}
 \author{Michele Orr\`u}
 \usepackage{graphicx}
-\usepackage{hyperref}
 \usepackage{mathtools}
 \usepackage{amsfonts}
 \usepackage{unitsdef}
+\usepackage{hyperref}
 \begin{document}
 \newcommand{\code}[1]{\texttt{#1}}
 \maketitle
@@ -14,13 +14,13 @@ The purpose of this project is to implement a two-step analysis and classificati
 \end{abstract}
 
 
-
 \section{Introduction}
 Given a user shifting his attention to the left or to the right and monitoring the spatial and temporal status of the MEG\cite{Biomag2010} signal, the goal is to build a classifier capable of brain-decode \textit{a-posteriori} towards which direction the user was actually shifting his attention.
 
 
 
 \section{Dataset}
+\label{dataset}
 in the following we describe how the input data was given, and how it is structured. 
 
 \noindent
@@ -29,7 +29,7 @@ Input data was taken from the Biomag 2010 contest, first analyzed in
  magnetoencephalography(MEG) data collected from 15 subjects who were engaged in
 a task where they covertly had to visually attend left, right, up, or down during a
 period of 2500\milli\second. 
-Then, MEG data has been transformated using spectral energy distribution and compressed in two numpy pickled binary files
+Then, MEG data has been filtered for left, right directions, transformated using spectral energy distribution and compressed in two numpy pickled binary files
  (\code{.npz}), namely \code{freq\_left\_gradient.npy.npz}
  and \code{freq\_left\_gradient.npy.npz}.
 
@@ -85,19 +85,18 @@ predict the \emph{local} direction; the second one
 instead, is expected to predict the \emph{global}
 output, given the local information.
 
-Reasons for this choices are to be found in a reduction of the dimensionality of the feature space, and into a better balance between the number of instances and the number of features.
+Reasons for this choices are to be found mostly in a reserach interest concerning localized informations of the brain.
 Furthermore, by stacking, we should presumibly
-achieve a most accurate learning model extending the crossvalidation concept, as described in (Wolpert, 1992, Introduction)\cite{Wolpert92}, and in a reserach interest concerning localized informations of the brain.
-
+reduce the dimensionality of the feature space, and reach a better balance between the number of instances and the number of features.
 
 \subsection{Formalization} 
 
-\paragraph{First Step} as stated above, is a vector of function 
+\paragraph{First Step} as stated above, consists in a vector of functions
 $ \{f_0, f_1, \dots, f_n \}$ 
-taking as input the frequency bands, for a specific trial over all trials and expressing the best direction ($left=-1$, $right=+1$), in terms of confidence within the interval $[-1, +1]$. Hence, we can define them as:
+taking as input the frequency bands over a specific channel and expressing the best direction ($left$, $right$), in terms numeric values $(-1, +1)$. Hence, we can define them as:
 $$
 \begin{array}{lr}
-f_k: (\begin{array}{l l l} freq_{k, 0}, & \cdots, & freq_{k, t} \end{array})^{trials} \to [-1, 1]^{trials},
+f_k: (\begin{array}{l l l} freq_{k, 0}, & \cdots, & freq_{k, t} \end{array})^{trials} \to \{-1, 1\}^{trials},
 &
 k \in \{0, \dots, n\}
 \end{array}
@@ -105,11 +104,12 @@ $$
 
 \paragraph{Second Step} we are looking for a funciton expressing the global output as a boolean value, given the localized information about each channel previously discovered and then aggregated:
 $$
-g: [-1, +1]^n \to \{-1, +1\}
+g: \{-1, +1\}^n \to \{-1, +1\}
 $$
 
 
 \subsection{Learning Model}
+\label{learning_model}
 
 \paragraph{First Step} each of the ${f_k}$ function has been trained using a \textbf{non-linear SVM classifier}, with \emph{gaussian} and \emph{polynomial} kernels. 
 
@@ -150,7 +150,7 @@ snd.fit(input, output)
 \subsection{Validation}
 Each round of cross-validation involves a combination of $f_k$s and $g$ which is eventually saved to disk if its accuracy is over $75\%$. 
 Globally, only the tuple of learners having best accuracy is considered.
-Besides all this, tuning of the parameters has been done on the output logs.
+Besides all this, the best learnerns achieved by constraints tuning has been selected by examining the output logs \code{output.log}, \code{output.log.1}, \code{output.log.2}.
 
 \section{Implementation}
 The implementation is done in pure 
@@ -164,20 +164,20 @@ Source code is available on
 \href{https://github.com/mmaker/braindecoding}{GitHub}.
 
 \subsection{Code Structure}
-File \code{braindecoding.py} handles all the works. It is composed of three main functions, each one bindend to a specific command: 
+File \code{braindecoding.py} handles preprocessing, learning and validation. It is composed of three main functions, each one bindend to a specific command: 
 \begin{itemize}
-\item \code{preprocess()}, binded to \code{-p}, performs the preprocessing discussed in \ref{sec:Dataset};
-\item \code{learn(parameters=None)}, binded to \code{-l}, performs the learning as described in \ref{sec:Learning Model};
+\item \code{preprocess()}, binded to \code{-p}, performs the preprocessing discussed in section \nameref{dataset};
+\item \code{learn(parameters=None)}, binded to \code{-l}, performs the learning as described in section \nameref{learning_model};
 \item \code{tune(processes=None)}, binded to \code{-t}, starts up a pool of processes, each one computing a \code{learn()} function. Used for validation.
 \end{itemize}
 
 \section{Conclusions}
 Performance has been evaluated only computing the accuracy of the outer classifier. Even thouth succint, is a valuable method for having an idea of the flexibility of the learner.
 
+Examining files \code{output.log*} shown that \emph{polynomial} kernels had a higher density of learners above the $75\%$ of accuracy.
 
-Examining files \code{output.log} shown that \emph{polynomial} kernels had a higher density of learners above the $75\%$ of accuracy.
-
-Further improvements of the learner could have been achieved adding the standard deviation, next to the mean of the frequencies, as inputs for the first layer of learners; but still, they have not been implemented for a pure matter of time.
+\paragraph{Further improvements} of the learner could have been achieved defining the codomain of each $f_k$ as an interval $[-1, +1]$, using \emph{support vector regression}'s implementation \code{sklearn.svm.SVR}, which has not been done for a matter of time.
+Another side on which the learner is currently inefficient, is the lack of information about the \emph{spread} of frequencies, once resized. Adding the standard deviation, next to the mean of the frequencies, as inputs for the first layer of learners should fix that; but still, they have not been implemented for a pure matter of time.
 
 
 
