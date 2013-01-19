@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #coding: utf-8
-from __future__ import division
+from __future__ import division, with_statement
 from multiprocessing import Pool
 from copy import deepcopy
 import os.path
@@ -11,6 +11,8 @@ import sys
 
 import numpy as np
 import pylab as pl
+import mpl_toolkits.mplot3d.axes3d as p3
+
 from sklearn import svm, cross_validation
 from sklearn.metrics import zero_one_score as accuracy
 
@@ -19,7 +21,7 @@ __email__ = 'maker@python.it'
 __license__ = """ DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
                    Version 2, December 2004
 
-Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>
+Copyright (C) 2004 Michele Orru` <maker@python.it>
 
 Everyone is permitted to copy and distribute verbatim or modified
 copies of this license document, and changing it is allowed as long
@@ -80,16 +82,39 @@ def preprocess():
     )
 
 
-def plot():
+def plot(filter='rbf', outputlog='output.log'):
     """
-    Plot dataset in a pretty way.
+    Plot output logs in a pretty way.
     """
-    dataset = np.load(os.path.join(_curdir, 'dataset.npz'))
-    labels = dataset['label']
-    left = dataset['left']
-    right = dataset['right']
-    trials, channels, freqs = map(xrange, left.shape)
+    with open(outputlog) as f:
+        lines = [line.strip().split(',', 1) for line in f
+                 if 'BEST' in line and filter in line]
 
+    # template:
+    # "BEST: 63.33%, parameters: {'kernel': 'poly', 'C': 96.0, 'gamma': 49.5}"
+    lines = [(float(x.split(':')[1][:-1]), eval(y.split(':',1)[1]))
+             for x, y in lines]
+
+    if filter == 'rbf':
+        x, y = np.array([(fst, snd['C']) for fst, snd in lines]).T
+        pl.plot(x, y)
+        pl.ylabel('C')
+        pl.xlabel('accuracy')
+    elif filter == 'poly':
+        x, y, z = np.array(
+           [(float(fst), float(snd['C']), float(snd['gamma']))
+            for fst, snd in lines]
+        ).T
+
+        fig = pl.figure()
+        ax = p3.Axes3D(fig)
+        ax.plot_wireframe(x,y,z)
+        ax.set_ylabel('C')
+        ax.set_xlabel('acc')
+        ax.set_zlabel(u'ɣ')
+
+    pl.title('%s performance graph on file %s' % (filter, outputlog))
+    pl.show()
 
 def learn(parameters=None):
     parameters = parameters or dict(kernel='rbf',
@@ -197,7 +222,7 @@ if __name__ == '__main__':
                         help='Preprocess datased given by CIMeC',
     )
     parser.add_argument('-d', '--plot',
-                        action='store_true',
+                        nargs='*',
                         dest='plot',
                         help='plot the dataset'
     )
@@ -217,11 +242,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if args.preprocess:
         preprocess()
-    if args.plot:
-        plot()
+    if args.plot is not None:
+        plot(*args.plot)
     if args.learn:
         learn()
     if args.tune:
         tune(args.tune)
-    if not any(vars(args).values()):
+    if all(x is None for x in vars(args).values()):
         parser.print_help()
