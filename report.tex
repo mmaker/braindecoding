@@ -1,11 +1,13 @@
 \documentclass[10pt]{article}
 \title{\textbf{Machine Learning Project Report }}
 \author{Michele Orr\`u}
-\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{float}
 \usepackage{mathtools}
 \usepackage{amsfonts}
 \usepackage{unitsdef}
 \usepackage{hyperref}
+\usepackage{graphicx}
 \begin{document}
 \newcommand{\code}[1]{\texttt{#1}}
 \maketitle
@@ -175,6 +177,14 @@ File \code{braindecoding.py} handles preprocessing, learning and validation. It 
 Performance has been evaluated only computing the accuracy of the outer classifier. Even thouth succint, is a valuable method for having an idea of the flexibility of the learner.
 
 Examining files \code{output.log*} shown that \emph{polynomial} kernels had a higher density of learners above the $75\%$ of accuracy.
+
+\begin{figure}[H]
+\includegraphics[width=200pt]{output-rbf.png}
+\hfill
+\includegraphics[width=200pt]{output-poly.png}
+\hfill
+\caption{Performance graph on \code{output.log}}
+\end{figure}
 
 \paragraph{Further improvements} of the learner could have been achieved defining the codomain of each $f_k$ as an interval $[-1, +1]$, using \emph{support vector regression}'s implementation \code{sklearn.svm.SVR}, which has not been done for a matter of time.
 Another side on which the learner is currently inefficient, is the lack of information about the \emph{spread} of frequencies, once resized. Adding the standard deviation, next to the mean of the frequencies, as inputs for the first layer of learners should fix that; but still, they have not been implemented for a pure matter of time.
