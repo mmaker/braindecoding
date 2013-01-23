@@ -42,6 +42,7 @@ warnings.simplefilter("ignore")
 
 def preprocess():
     """
+    [Danilo Benozzo]
     Input datasets:
         fsample --> si riferisce solamente alla frequenza di campionamento (300 Hz);
         label --> associa ad ogni canale un'etichetta per identificarlo spazialmente:
@@ -54,8 +55,8 @@ def preprocess():
         spettrale di potenza;
         time --> asse dei tempi (in secondi) su cui era acquisito il segnale meg.
     Output dataset:
-        left --> matrice (127, 274, 7) = (trial left x channel x  μ_i),
-        con  μ_i la media per i vari intervalli di frequenza
+        left --> matrice (127, 274, 7), (±1) = (trial x channel x  μ), output
+        con  μ la media per i vari intervalli di frequenza
         label --> associa ad ogni canale un'etichetta per identificarlo
         spazialmente
 
@@ -108,10 +109,10 @@ def plot(filter='rbf', outputlog='output.log'):
 
         fig = pl.figure()
         ax = p3.Axes3D(fig)
-        ax.plot_wireframe(x,y,z)
+        ax.plot_wireframe(z,y,x)
+        ax.set_zlabel('acc')
         ax.set_ylabel('C')
-        ax.set_xlabel('acc')
-        ax.set_zlabel(u'ɣ')
+        ax.set_xlabel(u'ɣ')
 
     pl.title('%s performance graph on file %s' % (filter, outputlog))
     pl.show()
@@ -198,7 +199,7 @@ def learn(parameters=None):
 
 def tune(processes=None):
     """
-    Learn, using specific constraints.
+    Start a pool of processes, each one computing a different learn() functions.
     """
     # exit immediately with a KeyboardInterrupt
     signal.signal(signal.SIGINT, sys.exit)
