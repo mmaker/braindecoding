@@ -23,7 +23,7 @@ Given a user shifting his attention to the left or to the right and monitoring t
 
 \section{Dataset}
 \label{dataset}
-in the following we describe how the input data was given, and how it is structured. 
+In the following we describe how the input data was given, and how it is structured. 
 
 \noindent
 Input data was taken from the Biomag 2010 contest, first analyzed in 
@@ -156,7 +156,7 @@ Besides all this, the best learnerns achieved by constraints tuning has been sel
 \section{Implementation}
 The implementation is done in pure 
 \href{https://python.org/}{python}
-, using the \href{http://scikit-learn.org/stable/}{scikit-learn}
+, version $>=2.6$, using the \href{http://scikit-learn.org/stable/}{scikit-learn}
 module. Documentation available via the \code{help()} fucntion. 
 Source code hosted on \href{https://github.com/mmaker/braindecoding}{GitHub}.
 
@@ -175,9 +175,9 @@ Performance has been evaluated only computing the accuracy of the outer classifi
 Examining files \code{output.log*} shown that \emph{polynomial} kernels had a higher density of learners above the $75\%$ of accuracy.
 
 \begin{figure}[H]
-\includegraphics[width=.40\textwidth]{output-rbf-1.png}
+\includegraphics[width=.4\textwidth]{output-rbf-1.png}
 \hfill
-\includegraphics[width=.60\textwidth]{output-poly-1.png}
+\includegraphics[width=.6\textwidth]{output-poly-1.png}
 \hfill
 \caption{Performance graph on \code{output.log.1}}
 \end{figure}
